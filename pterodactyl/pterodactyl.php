@@ -310,20 +310,24 @@ function pterodactyl_ResolveUser(array $params)
         throw new Exception('Failed to get user, received error code: ' . $userResult['status_code'] . '. Enable module debug log for more info.');
     }
 
+
     // Search for user by email
-    $userResult = pterodactyl_API($params, 'users?filter[email]=' . urlencode($params['clientsdetails']['email']));
+    $page = 1;
+    do {
+        $userResult = pterodactyl_API($params, 'users?page=' . $page . '&filter[email]=' . urlencode($params['clientsdetails']['email']));
 
-    // Api should always return 200, if not, something is wrong
-    if ($userResult['status_code'] !== 200) throw new Exception('Failed to get user, received error code: ' . $userResult['status_code'] . '. Enable module debug log for more info.');
+        // Api should always return 200, if not, something is wrong
+        if ($userResult['status_code'] !== 200) throw new Exception('Failed to get user, received error code: ' . $userResult['status_code'] . '. Enable module debug log for more info.');
 
-    // Loop though any users found and return the first one that matches the email    
-    if ($userResult['meta']['pagination']['total'] > 0) {
+        // Loop though any users found and return the first one that matches the email    
         foreach($userResult['data'] as $user) {
             if(strcasecmp($user['attributes']['email'], $params['clientsdetails']['email']) === 0) {
                 return $user['attributes'];
             }
         }
-    }
+        $page++;
+    } while ($userResult['meta']['pagination']['current_page'] < $userResult['meta']['pagination']['total_pages']);
+    
 
 
     // A matching user was not found - create a new one
